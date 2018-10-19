@@ -132,28 +132,16 @@ class RequestBodyValidator(object):
         @functools.wraps(function)
         def wrapper(request):
             if all_json(self.consumes):
-                data = request.json
+                ctype = request.headers.get("Content-Type", "")
+                if not is_json_mimetype(ctype):
+                    msg = "Invalid Content-type ({ctype}), expected JSON".format(ctype=ctype)
+                    return problem(415, "Unsupported Media Type", msg)
 
+                data = request.json
                 empty_body = not(request.body or request.form or request.files)
                 if data is None and not empty_body and not self.is_null_value_valid:
-                    try:
-                        ctype_is_json = is_json_mimetype(request.headers.get("Content-Type", ""))
-                    except ValueError:
-                        ctype_is_json = False
-
-                    if ctype_is_json:
-                        # Content-Type is json but actual body was not parsed
-                        return problem(400,
-                                       "Bad Request",
-                                       "Request body is not valid JSON"
-                                       )
-                    else:
-                        # the body has contents that were not parsed as JSON
-                        return problem(415,
-                                       "Unsupported Media Type",
-                                       "Invalid Content-type ({content_type}), expected JSON data".format(
-                                           content_type=request.headers.get("Content-Type", "")
-                                       ))
+                    # Content-Type is json but actual body was not parsed
+                    return problem(400, "Bad Request", "Request body is not valid JSON")
 
                 logger.debug("%s validating schema...", request.url)
                 error = self.validate_schema(data, request.url)

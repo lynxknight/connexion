@@ -56,7 +56,11 @@ def is_json_mimetype(mimetype):
     :type mimetype: str
     :rtype: bool
     """
-    maintype, subtype = mimetype.split('/')  # type: str, str
+    maintype, _, subtype = mimetype.partition('/')  # type: str, str, str
+    # get rid of additional info (e.g. charset)
+    semicolon_i = subtype.find(';')
+    if semicolon_i > -1:
+        subtype = subtype[:semicolon_i]
     return maintype == 'application' and (subtype == 'json' or subtype.endswith('+json'))
 
 
@@ -80,6 +84,8 @@ def all_json(mimetypes):
     >>> all_json(['application/json', 'other/type'])
     False
     >>> all_json(['application/json', 'application/x.custom+json'])
+    True
+    >>> all_json(['application/json', 'application/json; charset=utf-8'])
     True
     """
     return all(is_json_mimetype(mimetype) for mimetype in mimetypes)
